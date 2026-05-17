@@ -210,7 +210,7 @@
     state.filename = name || 'untitled.tex';
     els.filename.textContent = state.filename;
     els.filename.setAttribute('title', state.filename);
-    document.title = state.filename + ' — texview';
+    document.title = state.filename + ' · texview';
   }
 
   /* Render pipeline */
@@ -304,7 +304,7 @@
       }, 250);
       toast('Saved ' + name + ' + ' + attachCount +
         ' attachment' + (attachCount === 1 ? '' : 's') +
-        ' — keep them in the same folder');
+        '. Keep them in the same folder.');
     } else {
       toast('Saved ' + name);
     }

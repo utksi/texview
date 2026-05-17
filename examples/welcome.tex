@@ -2,43 +2,102 @@
 \usepackage{amsmath, amssymb, amsthm}
 \usepackage{hyperref}
 
-\title{Welcome to \texttt{texview}}
-\author{Browser-only LaTeX viewer}
+\title{Welcome to texview}
+\author{A browser-only LaTeX viewer}
 \date{}
 
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}{Lemma}
+\newtheorem{definition}{Definition}
 
 \begin{document}
 \maketitle
 
-A browser-only viewer for lightweight LaTeX. Aimed at math notes, problem sets
-and derivations rather than full papers --- there's no bibliography engine, no
-real float placement and no macro expansion, but math, sectioning, lists,
-theorem-like environments, links, \texttt{verbatim}, basic \texttt{tabular}
-and \texttt{\textbackslash includegraphics} all render.
+A browser-only viewer for lightweight LaTeX. Aimed at math notes, problem
+sets and derivations rather than full papers --- there's no bibliography
+engine, no real float placement and no macro expansion, but math,
+sectioning, lists, theorem-like environments, links, \texttt{verbatim},
+basic \texttt{tabular} and \texttt{\textbackslash includegraphics} all
+render live as you type.
+
+\textit{Tip: press \texttt{?} for the keyboard cheat sheet, or
+\texttt{Alt+G} to reload this guide.}
+
+\section{What you can do}
+
+\begin{itemize}
+  \item \textbf{Side-by-side preview} with synchronized scrolling
+  \item \textbf{Selection mirroring}: highlight text in either pane and
+        the other follows
+  \item \textbf{Four view modes:} split, stacked, source only, preview only
+  \item \textbf{Math, lists, tables, theorems, code, figures}
+  \item \textbf{Drag-and-drop} or paste TeX source to load a file
+  \item \textbf{Image attachments} with figure-stub insertion
+  \item \textbf{Export} as HTML, print to PDF, or download the \texttt{.tex}
+  \item \textbf{Persists} across reloads (your last session is restored)
+  \item \textbf{Light / dark theme} with auto-detection
+  \item \textbf{Mobile-friendly} layout that adapts to narrow screens
+\end{itemize}
 
 \section{Math}
 
 Inline math uses \texttt{\$\dots\$} or \texttt{\textbackslash(\dots\textbackslash)}:
-the area of a circle is $A = \pi r^2$ and Euler's identity is
-$e^{i\pi} + 1 = 0$.
+the area of a circle is $A = \pi r^2$, Euler's identity is
+$e^{i\pi} + 1 = 0$, and the golden ratio satisfies
+$\varphi^2 = \varphi + 1$.
 
-Display math uses \texttt{\$\$\dots\$\$}, \texttt{\textbackslash[\dots\textbackslash]},
-or an \texttt{amsmath} environment:
+\subsection{Display}
+
+Display math uses \texttt{\$\$\dots\$\$},
+\texttt{\textbackslash[\dots\textbackslash]}, or any \texttt{amsmath}
+environment KaTeX supports:
 
 \[
   \frac{\partial}{\partial t}\Psi(\mathbf{r}, t)
-  =
-  \frac{1}{i\hbar}\,\hat{H}\,\Psi(\mathbf{r}, t)
+  = \frac{1}{i\hbar}\,\hat{H}\,\Psi(\mathbf{r}, t)
 \]
 
+\subsection{Aligned systems}
+
 \begin{align}
-  \nabla \cdot \mathbf{E}     &= \frac{\rho}{\varepsilon_0} \\
-  \nabla \cdot \mathbf{B}     &= 0                          \\
-  \nabla \times \mathbf{E}    &= -\frac{\partial \mathbf{B}}{\partial t} \\
-  \nabla \times \mathbf{B}    &= \mu_0 \mathbf{J} + \mu_0 \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t}
+  \nabla \cdot \mathbf{E}  &= \frac{\rho}{\varepsilon_0} \\
+  \nabla \cdot \mathbf{B}  &= 0 \\
+  \nabla \times \mathbf{E} &= -\frac{\partial \mathbf{B}}{\partial t} \\
+  \nabla \times \mathbf{B} &= \mu_0 \mathbf{J}
+                            + \mu_0\varepsilon_0\frac{\partial \mathbf{E}}{\partial t}
 \end{align}
+
+\subsection{Cases}
+
+\[
+  \mathrm{sign}(x) = \begin{cases}
+    +1 & x > 0 \\
+    \phantom{+}0 & x = 0 \\
+    -1 & x < 0
+  \end{cases}
+\]
+
+\subsection{Matrices}
+
+\[
+  R(\theta) =
+  \begin{pmatrix}
+    \cos\theta & -\sin\theta \\
+    \sin\theta & \phantom{-}\cos\theta
+  \end{pmatrix},
+  \qquad
+  R(\theta)\,R(\varphi) = R(\theta + \varphi).
+\]
+
+\subsection{Sums, products, integrals}
+
+\[
+  \sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6},
+  \qquad
+  \prod_{p \text{ prime}} \frac{1}{1 - p^{-s}} = \zeta(s),
+  \qquad
+  \int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}.
+\]
 
 \section{Sectioning}
 
@@ -48,19 +107,21 @@ This is a paragraph. The \texttt{\textbackslash section} command takes
 
 \subsection{Subsections}
 
-Section numbers nest. References resolve too --- e.g.\ this lives in
-section \ref{sec:numbers}.
+Section numbers nest. Cross-references resolve too --- e.g.\ this lives
+in section \ref{sec:numbers}.
 
 \subsection{Numbers and refs}\label{sec:numbers}
 
-You can use \texttt{\textbackslash label\{\dots\}} and
-\texttt{\textbackslash ref\{\dots\}}; eqref renders the (parenthesized)
-equation number.
+You can attach \texttt{\textbackslash label\{\dots\}} to a heading and
+later cite it with \texttt{\textbackslash ref\{\dots\}} or
+\texttt{\textbackslash autoref\{\dots\}}; \texttt{\textbackslash eqref}
+renders the parenthesised equation number.
 
 \subsubsection{Even deeper}
 
-Down to \texttt{\textbackslash subsubsection}; paragraph and subparagraph
-also work.
+Down to \texttt{\textbackslash subsubsection};
+\texttt{\textbackslash paragraph} and \texttt{\textbackslash subparagraph}
+also work, but render as small inline-style headings.
 
 \section{Lists}
 
@@ -82,7 +143,7 @@ Description:
 \begin{description}
   \item[\texttt{KaTeX}] fast math typesetting in the browser
   \item[\texttt{CodeMirror}] the source editor
-  \item[\texttt{DOMPurify}] HTML sanitizer
+  \item[\texttt{DOMPurify}] HTML sanitiser
 \end{description}
 
 \section{Theorem-like environments}
@@ -94,17 +155,27 @@ For any right triangle with legs $a$, $b$ and hypotenuse $c$,
 
 \begin{lemma}
 The sum of the first $n$ positive integers is
-\(\tfrac{n(n+1)}{2}\).
+$\tfrac{n(n+1)}{2}$.
 \end{lemma}
 
 \begin{proof}
-Pair the $k$-th term with the $(n+1-k)$-th; each pair sums to $n+1$, and
-there are $n/2$ pairs.
+Pair the $k$-th term with the $(n+1-k)$-th; each pair sums to $n+1$,
+and there are $n/2$ such pairs (or $(n-1)/2$ pairs and a middle term
+when $n$ is odd; either way the total is $n(n+1)/2$).
 \end{proof}
+
+\begin{definition}
+A function $f \colon \mathbb{R} \to \mathbb{R}$ is
+\emph{continuous at $x_0$} if for every $\varepsilon > 0$ there is a
+$\delta > 0$ such that $|x - x_0| < \delta$ implies
+$|f(x) - f(x_0)| < \varepsilon$.
+\end{definition}
 
 \section{Code}
 
-Inline code with \verb|\verb|, like \verb|cm.setOption('lineNumbers', false)|.
+Inline code with \verb|\verb|, like
+\verb|cm.setOption('lineNumbers', false)| or
+\verb!sed -e 's/foo/bar/g' file.txt!.
 
 \begin{verbatim}
 function fibonacci(n) {
@@ -126,39 +197,70 @@ A simple \texttt{tabular}:
   \hline
   Math          & KaTeX        & fast, no MathJax          \\
   Editor        & CodeMirror 5 & \texttt{stex} mode        \\
-  Sanitization  & DOMPurify    & always-on safety net      \\
+  Sanitisation  & DOMPurify    & always-on safety net      \\
   \hline
 \end{tabular}
 \end{center}
 
-\section{Quotes and emphasis}
+\section{Inline formatting}
+
+Mix \textbf{bold}, \textit{italic}, \emph{emphasised}, \texttt{monospace},
+\textsf{sans-serif}, \textsc{small caps}, \underline{underlined} and
+\sout{struck-through} text. Subscripts and superscripts also work in
+running text: H\textsubscript{2}O, x\textsuperscript{2}. The TeX logo:
+\TeX\ and \LaTeX.
+
+\section{Quotes}
 
 \begin{quote}
 ``Any sufficiently advanced technology is indistinguishable from magic.''
 --- Arthur C.\ Clarke
 \end{quote}
 
-You can mix \textbf{bold}, \textit{italic}, \emph{emphasized}, \texttt{monospace},
-\underline{underlined} and \sout{struck-through} text.
+The renderer turns \verb|---| into an em-dash, \verb|--| into an
+en-dash, and \verb|``...''| into curly quotes.
 
-\section{Images}
+\section{Links}
 
-Drop an image file anywhere on the page (or paste a screenshot), then insert
-the LaTeX reference from the attachments popover --- it renders inline as a
-\texttt{figure}:
+External: \href{https://katex.org/}{KaTeX} powers math rendering;
+\href{https://codemirror.net/5/}{CodeMirror~5} powers the editor.
+Bare URLs use \texttt{\textbackslash url}:
+\url{https://github.com/utksi/texview}.
 
-% \begin{figure}
-%   \centering
-%   \includegraphics[width=0.6\textwidth]{./diagram.png}
-%   \caption{Sketch of the setup}
-% \end{figure}
+\section{Figures and attachments}
+
+Drop an image file anywhere on the page (or paste a screenshot from the
+clipboard), then click the paperclip in the toolbar and pick
+\textbf{Insert reference} --- a \texttt{figure} block is inserted at
+the cursor:
+
+\begin{verbatim}
+\begin{figure}
+  \centering
+  \includegraphics[width=0.6\textwidth]{./diagram.png}
+  \caption{Sketch of the setup}
+\end{figure}
+\end{verbatim}
+
+On download, the \texttt{.tex} and every attachment are saved together;
+keep them in the same folder so the \texttt{./name.ext} references
+resolve.
 
 \section{What's not supported}
 
-Bibliographies (\texttt{\textbackslash cite}, \texttt{\textbackslash bibliography}),
-custom macros (\texttt{\textbackslash newcommand} is stripped, not expanded),
-exact float placement, page-level layout, fine microtypography, and most
+Bibliographies (\texttt{\textbackslash cite},
+\texttt{\textbackslash bibliography}), custom macros
+(\texttt{\textbackslash newcommand} is stripped, not expanded), exact
+float placement, page-level layout, fine microtypography, and most
 package-specific commands. If you need any of those, a real LaTeX engine
-(local TeX Live, Overleaf, or a WASM build like SwiftLaTeX) is the right tool.
+(local TeX Live, Overleaf, or a WASM build like SwiftLaTeX) is the right
+tool.
+
+\section*{Try it}
+
+Load your own file (open icon in the toolbar, or drop one anywhere),
+or just start typing in the left pane. Switch view modes with
+\texttt{Alt+1} through \texttt{Alt+4}. Drag the divider to resize the
+panes; double-click it to reset to 50/50.
 
 \end{document}

@@ -240,20 +240,30 @@
       return s;
     });
 
-    /* 8. Inline commands. Iteratively for nested args. */
+    /* 8. Inline commands. Iteratively for nested args.
+          The argument pattern `(?:\\.|[^{}\\])*` allows escaped braces
+          (e.g. \texttt{\textbackslash ref\{\dots\}}) — `\\.` consumes \{
+          and \} as a unit so the matcher doesn't mistake them for the
+          arg's own closing brace. The plain alternative excludes `\` too
+          so the regex can't backtrack and reinterpret `\}` as a closing
+          brace — that backtracking would otherwise let an unclosed
+          \cmd{X reach across the document and devour an unrelated \}.
+          Nested \cmd{\cmd2{x}} still works because fixpoint resolves the
+          inner command first; the outer then sees regular HTML inside
+          its braces. */
     s = fixpoint(s, function (s) {
-      s = s.replace(/\\textbf\s*\{([^{}]*)\}/g,    '<strong>$1</strong>');
-      s = s.replace(/\\textit\s*\{([^{}]*)\}/g,    '<em>$1</em>');
-      s = s.replace(/\\emph\s*\{([^{}]*)\}/g,      '<em>$1</em>');
-      s = s.replace(/\\texttt\s*\{([^{}]*)\}/g,    '<code>$1</code>');
-      s = s.replace(/\\textsf\s*\{([^{}]*)\}/g,    '<span class="tex-sf">$1</span>');
-      s = s.replace(/\\textsc\s*\{([^{}]*)\}/g,    '<span class="tex-sc">$1</span>');
-      s = s.replace(/\\underline\s*\{([^{}]*)\}/g, '<u>$1</u>');
-      s = s.replace(/\\sout\s*\{([^{}]*)\}/g,      '<s>$1</s>');
-      s = s.replace(/\\textsubscript\s*\{([^{}]*)\}/g,   '<sub>$1</sub>');
-      s = s.replace(/\\textsuperscript\s*\{([^{}]*)\}/g, '<sup>$1</sup>');
-      s = s.replace(/\\mbox\s*\{([^{}]*)\}/g,      '$1');
-      s = s.replace(/\\text\s*\{([^{}]*)\}/g,      '$1');
+      s = s.replace(/\\textbf\s*\{((?:\\.|[^{}\\])*)\}/g,    '<strong>$1</strong>');
+      s = s.replace(/\\textit\s*\{((?:\\.|[^{}\\])*)\}/g,    '<em>$1</em>');
+      s = s.replace(/\\emph\s*\{((?:\\.|[^{}\\])*)\}/g,      '<em>$1</em>');
+      s = s.replace(/\\texttt\s*\{((?:\\.|[^{}\\])*)\}/g,    '<code>$1</code>');
+      s = s.replace(/\\textsf\s*\{((?:\\.|[^{}\\])*)\}/g,    '<span class="tex-sf">$1</span>');
+      s = s.replace(/\\textsc\s*\{((?:\\.|[^{}\\])*)\}/g,    '<span class="tex-sc">$1</span>');
+      s = s.replace(/\\underline\s*\{((?:\\.|[^{}\\])*)\}/g, '<u>$1</u>');
+      s = s.replace(/\\sout\s*\{((?:\\.|[^{}\\])*)\}/g,      '<s>$1</s>');
+      s = s.replace(/\\textsubscript\s*\{((?:\\.|[^{}\\])*)\}/g,   '<sub>$1</sub>');
+      s = s.replace(/\\textsuperscript\s*\{((?:\\.|[^{}\\])*)\}/g, '<sup>$1</sup>');
+      s = s.replace(/\\mbox\s*\{((?:\\.|[^{}\\])*)\}/g,      '$1');
+      s = s.replace(/\\text\s*\{((?:\\.|[^{}\\])*)\}/g,      '$1');
       // \href{url}{text} and \url{url}
       s = s.replace(/\\href\s*\{([^}]+)\}\s*\{([^{}]+)\}/g, function (_, url, text) {
         return '<a href="' + escAttr(url) + '" target="_blank" rel="noopener noreferrer">' + text + '</a>';
@@ -284,7 +294,7 @@
         return kind === 'eqref' ? '(' + val + ')' : val;
       });
       // \footnote{...} — render inline as a tooltip-style superscript
-      s = s.replace(/\\footnote\s*\{([^{}]*)\}/g, function (_, body) {
+      s = s.replace(/\\footnote\s*\{((?:\\.|[^{}\\])*)\}/g, function (_, body) {
         return '<sup class="tex-fnref" title="' + escAttr(body.trim()) + '">[?]</sup>';
       });
       // \LaTeX, \TeX, \LaTeXe
@@ -292,8 +302,8 @@
       s = s.replace(/\\LaTeX\b/g, 'LaTeX');
       s = s.replace(/\\TeX\b/g, 'TeX');
       // Misc text commands we just strip while keeping their argument
-      s = s.replace(/\\textnormal\s*\{([^{}]*)\}/g, '$1');
-      s = s.replace(/\\textrm\s*\{([^{}]*)\}/g, '$1');
+      s = s.replace(/\\textnormal\s*\{((?:\\.|[^{}\\])*)\}/g, '$1');
+      s = s.replace(/\\textrm\s*\{((?:\\.|[^{}\\])*)\}/g, '$1');
       return s;
     });
 
@@ -322,7 +332,10 @@
       .replace(/~/g, ' ')
       // backslash-escaped specials
       .replace(/\\([&%$#_{}])/g, '$1')
-      .replace(/\\textbackslash\b/g, '\\')
+      // \textbackslash consumes any trailing whitespace, the same way a
+      // real LaTeX command would. Without this, '\textbackslash ref'
+      // leaves a stray space before 'ref' in the output.
+      .replace(/\\textbackslash\s*/g, '\\')
       .replace(/\\ldots\b/g, '…')
       .replace(/\\dots\b/g, '…')
       .replace(/\\,/g, ' ')          // thin space
@@ -341,7 +354,29 @@
            We protect existing block-level tags so they don't get wrapped. */
     s = paragraphize(s);
 
-    /* 11. Restore math + verbatim placeholders. */
+    /* 11. Restore math + verbatim placeholders. A `\[ ... \begin{cases}
+           ... \end{cases} ... \]` shelves the inner amsmath env first,
+           then wraps the rest as the outer math-block slot — the outer
+           body still carries the inner placeholder string. Walk slot
+           bodies recursively so the placeholder is resolved before we
+           hand the source to KaTeX. */
+    function restoreSlotBody(body) {
+      return String(body)
+        .replace(BLOCK_RE, function (_, idx) {
+          const slot = slots[+idx];
+          if (!slot) return '';
+          if (slot.kind === 'verbatim' || slot.kind === 'lstlisting') return slot.body;
+          if (slot.kind === 'math-block') return restoreSlotBody(slot.body);
+          return '';
+        })
+        .replace(INLINE_RE, function (_, idx) {
+          const slot = slots[+idx];
+          if (!slot) return '';
+          if (slot.kind === 'verb') return slot.body;
+          if (slot.kind === 'math-inline') return restoreSlotBody(slot.body);
+          return '';
+        });
+    }
     s = s.replace(BLOCK_RE, function (_, idx) {
       const slot = slots[+idx];
       if (!slot) return '';
@@ -349,7 +384,7 @@
         return '<pre><code class="tex-verb">' + esc(slot.body) + '</code></pre>';
       }
       if (slot.kind === 'math-block') {
-        return '<div class="tex-math" data-display="block">' + esc(slot.body) + '</div>';
+        return '<div class="tex-math" data-display="block">' + esc(restoreSlotBody(slot.body)) + '</div>';
       }
       return '';
     });
@@ -358,7 +393,7 @@
       if (!slot) return '';
       if (slot.kind === 'verb') return '<code class="tex-verb">' + esc(slot.body) + '</code>';
       if (slot.kind === 'math-inline') {
-        return '<span class="tex-math" data-display="inline">' + esc(slot.body) + '</span>';
+        return '<span class="tex-math" data-display="inline">' + esc(restoreSlotBody(slot.body)) + '</span>';
       }
       return '';
     });
@@ -427,10 +462,10 @@
   function processInlineText(s) {
     return fixpoint(s, function (s) {
       return s
-        .replace(/\\textbf\s*\{([^{}]*)\}/g, '<strong>$1</strong>')
-        .replace(/\\textit\s*\{([^{}]*)\}/g, '<em>$1</em>')
-        .replace(/\\emph\s*\{([^{}]*)\}/g, '<em>$1</em>')
-        .replace(/\\texttt\s*\{([^{}]*)\}/g, '<code>$1</code>');
+        .replace(/\\textbf\s*\{((?:\\.|[^{}\\])*)\}/g, '<strong>$1</strong>')
+        .replace(/\\textit\s*\{((?:\\.|[^{}\\])*)\}/g, '<em>$1</em>')
+        .replace(/\\emph\s*\{((?:\\.|[^{}\\])*)\}/g, '<em>$1</em>')
+        .replace(/\\texttt\s*\{((?:\\.|[^{}\\])*)\}/g, '<code>$1</code>');
     });
   }
 

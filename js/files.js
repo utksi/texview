@@ -106,7 +106,7 @@
   window.MdvFiles = {
     readTextFile: readTextFile,
     downloadText: downloadText,
-    isMarkdownFile: isMarkdownFile,
+    isTexFile: isTexFile,
     buildStandaloneHtml: buildStandaloneHtml,
     defaultFilename: defaultFilename
   };

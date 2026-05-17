@@ -4,11 +4,11 @@
 (function () {
   'use strict';
 
-  const NS = 'mdview:v1';
+  const NS = 'texview:v1';
   const MEM = Object.create(null);
   const hasLS = (function () {
     try {
-      const k = '__mdview_test__';
+      const k = '__texview_test__';
       localStorage.setItem(k, '1');
       localStorage.removeItem(k);
       return true;
