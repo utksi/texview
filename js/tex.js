@@ -25,6 +25,8 @@
   const BLOCK_RE  = new RegExp(BD + '(\\d+)' + BD, 'g');
   const INLINE_RE = new RegExp(ID + '(\\d+)' + ID, 'g');
   const HOLD_RE   = new RegExp(HD + '(\\d+)' + HD, 'g');
+  const LM = '';  // source-line marker for sync scroll
+  const LM_RE     = new RegExp(LM + '(\\d+)' + LM, 'g');
 
   /* ---------- helpers ---------- */
   function esc(s) {
@@ -57,23 +59,39 @@
     const holds = [];
     let s = String(src || '').replace(/\r\n?/g, '\n');
 
+    /* 0. Stamp every line with a source-line marker. The marker is a
+          PUA character pair ( N ) that survives the regex
+          pipeline because none of the structural transforms touch it.
+          After everything else is done we walk the resulting DOM and
+          move each marker onto its nearest block ancestor as a
+          data-source-line attribute, which the sync-scroll code then
+          uses to map editor lines to preview offsets. Verbatim and
+          math slot bodies have their markers stripped before they're
+          shelved, so the literal numbers don't leak into rendered
+          code blocks or KaTeX input. */
+    s = s.split('\n').map(function (line, i) {
+      return LM + i + LM + line;
+    }).join('\n');
+
     /* 1. Strip comments. % starts a comment unless preceded by an odd
           number of backslashes. */
     s = s.replace(/(^|[^\\])(\\\\)*%[^\n]*/g, function (m, pre, bs) {
       return pre + (bs || '');
     });
 
-    /* 2. Shelf verbatim and listings blocks BEFORE math extraction. */
+    /* 2. Shelf verbatim and listings blocks BEFORE math extraction.
+          Strip any line markers out of the body so they don't show up
+          as digits inside the rendered <code> block. */
     s = s.replace(/\\begin\{(verbatim|lstlisting)\*?\}\n?([\s\S]*?)\n?\\end\{\1\*?\}/g,
       function (m, env, body) {
         const id = slots.length;
-        slots.push({ kind: env, body: body });
+        slots.push({ kind: env, body: body.replace(LM_RE, '') });
         return '\n' + BD + id + BD + '\n';
       });
     /* \verb|text| or \verb!text! — pick any non-letter delimiter. */
     s = s.replace(/\\verb\*?([^a-zA-Z\s])([\s\S]*?)\1/g, function (m, d, body) {
       const id = slots.length;
-      slots.push({ kind: 'verb', body: body });
+      slots.push({ kind: 'verb', body: body.replace(LM_RE, '') });
       return ID + id + ID;
     });
 
@@ -88,25 +106,25 @@
     s = s.replace(new RegExp('\\\\begin\\{(' + dispEnvs + ')\\}[\\s\\S]*?\\\\end\\{\\1\\}', 'g'),
       function (m) {
         const id = slots.length;
-        slots.push({ kind: 'math-block', body: m });
+        slots.push({ kind: 'math-block', body: m.replace(LM_RE, '') });
         return '\n' + BD + id + BD + '\n';
       });
     // \[ ... \]
     s = s.replace(/\\\[\s*([\s\S]+?)\s*\\\]/g, function (m, body) {
       const id = slots.length;
-      slots.push({ kind: 'math-block', body: body });
+      slots.push({ kind: 'math-block', body: body.replace(LM_RE, '') });
       return '\n' + BD + id + BD + '\n';
     });
     // $$ ... $$
     s = s.replace(/\$\$\s*([\s\S]+?)\s*\$\$/g, function (m, body) {
       const id = slots.length;
-      slots.push({ kind: 'math-block', body: body });
+      slots.push({ kind: 'math-block', body: body.replace(LM_RE, '') });
       return '\n' + BD + id + BD + '\n';
     });
     // \( ... \)
     s = s.replace(/\\\(\s*([\s\S]+?)\s*\\\)/g, function (m, body) {
       const id = slots.length;
-      slots.push({ kind: 'math-inline', body: body });
+      slots.push({ kind: 'math-inline', body: body.replace(LM_RE, '') });
       return ID + id + ID;
     });
     // $ ... $  (single dollar, single line, avoid currency by requiring
@@ -114,7 +132,7 @@
     s = s.replace(/(^|[^\\$])\$(?!\s)((?:\\.|[^$\\\n])+?)(?<!\s)\$(?!\d)/g,
       function (m, pre, body) {
         const id = slots.length;
-        slots.push({ kind: 'math-inline', body: body });
+        slots.push({ kind: 'math-inline', body: body.replace(LM_RE, '') });
         return pre + ID + id + ID;
       });
 
@@ -404,11 +422,67 @@
       : s;
     target.innerHTML = sanitized;
 
-    /* 13. KaTeX rendering on .tex-math nodes */
+    /* 13. Move source-line markers from text content onto block ancestors
+           as data-source-line attributes, then KaTeX-render math nodes
+           and resolve image attachments. */
+    annotateSourceLines(target);
     renderMath(target);
-    /* 14. Rewrite image srcs to attachment object-URLs where applicable */
     if (window.MdvAttachments && window.MdvAttachments.rewriteImageSrcs) {
       window.MdvAttachments.rewriteImageSrcs(target);
+    }
+  }
+
+  /* Walk the rendered tree, find line markers in text nodes, attach the
+     line number as data-source-line on the nearest block-level ancestor,
+     then strip the marker text. Each block keeps the FIRST line number
+     it sees, so multi-line paragraphs anchor at the line their text
+     started on — that's what sync scroll's interpolation expects. */
+  const SRC_BLOCK_TAGS = {
+    DIV: 1, P: 1, UL: 1, OL: 1, LI: 1, PRE: 1, TABLE: 1, BLOCKQUOTE: 1,
+    H1: 1, H2: 1, H3: 1, H4: 1, H5: 1, H6: 1, FIGURE: 1, FIGCAPTION: 1,
+    DL: 1, DT: 1, DD: 1, SECTION: 1, ARTICLE: 1
+  };
+  function annotateSourceLines(root) {
+    if (!root || typeof root.querySelectorAll !== 'function') return;
+    const doc = root.ownerDocument || (typeof document !== 'undefined' ? document : null);
+    if (!doc || typeof doc.createTreeWalker !== 'function') return;
+    const walker = doc.createTreeWalker(root, 4 /* SHOW_TEXT */, null);
+    const texts = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      if (node.nodeValue && node.nodeValue.indexOf(LM) >= 0) texts.push(node);
+    }
+    function nextBlockSibling(n) {
+      while (n) {
+        n = n.nextSibling;
+        if (!n) return null;
+        if (n.nodeType === 1 && SRC_BLOCK_TAGS[n.nodeName]) return n;
+      }
+      return null;
+    }
+    for (let i = 0; i < texts.length; i++) {
+      const tn = texts[i];
+      const text = tn.nodeValue;
+      LM_RE.lastIndex = 0;
+      const m = LM_RE.exec(text);
+      if (m) {
+        const lineNum = parseInt(m[1], 10);
+        /* Prefer the enclosing block; if the marker is sitting between
+           blocks (e.g. the line that produced a <h1> via \section), walk
+           forward to the next block sibling instead. */
+        let block = tn.parentNode;
+        while (block && block !== root && !SRC_BLOCK_TAGS[block.nodeName]) {
+          block = block.parentNode;
+        }
+        if (!block || block === root) {
+          block = nextBlockSibling(tn);
+        }
+        if (block && block !== root && Number.isFinite(lineNum) &&
+            !block.hasAttribute('data-source-line')) {
+          block.setAttribute('data-source-line', String(lineNum));
+        }
+      }
+      tn.nodeValue = text.replace(LM_RE, '');
     }
   }
 
@@ -470,16 +544,28 @@
   }
 
   /* Wrap untagged stretches of text in <p>. We mark known block-level tags
-     and split on blank lines. */
+     and split on blank lines. A leading run of source-line markers is
+     ignored for the block-tag check, otherwise a chunk like
+     "<LM>102<LM><h1>...</h1>" would look like text and get wrapped — the
+     browser would then split the invalid <p><h1></p> apart and the marker
+     would end up tagging the synthesised empty <p> instead of the heading
+     it was meant for. */
   const BLOCK_TAGS = /^\s*<(?:h[1-6]|div|ul|ol|dl|pre|table|figure|blockquote|p|hr|section)\b/i;
+  const LM_LEAD_RE = new RegExp('^(?:' + LM + '\\d+' + LM + '\\s*)+');
+  const LM_LINE_RE = new RegExp('^[ \\t]*' + LM + '\\d+' + LM + '[ \\t]*$', 'gm');
   function paragraphize(s) {
+    /* Marker-only lines (originally blank source lines, or lines whose
+       content was removed by the preamble strip) would otherwise glue
+       neighbouring paragraphs together, because every line now carries
+       a marker and the \n\s*\n split never fires. Strip them first so
+       the chunking matches what it would have been pre-markers. */
+    s = s.replace(LM_LINE_RE, '');
     const chunks = s.split(/\n\s*\n+/);
     return chunks.map(function (chunk) {
       const trimmed = chunk.trim();
       if (!trimmed) return '';
-      // Already a block element? Don't wrap.
-      if (BLOCK_TAGS.test(trimmed)) return trimmed;
-      // Inline placeholders (math/verb) get a paragraph wrap too.
+      const stripped = trimmed.replace(LM_LEAD_RE, '');
+      if (BLOCK_TAGS.test(stripped)) return trimmed;
       return '<p>' + trimmed + '</p>';
     }).join('\n');
   }

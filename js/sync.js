@@ -61,10 +61,35 @@
     }
 
     /* ---------- sync scroll ---------- */
+    /* When the renderer hasn't emitted [data-source-line] anchors (or the
+       document is too short for any to register), fall back to a plain
+       linear progress mapping so scrolling at least follows on both sides
+       instead of doing nothing. */
+    function linearFromEditor() {
+      const info = cm.getScrollInfo();
+      const editorMax = Math.max(1, info.height - info.clientHeight);
+      const progress = Math.max(0, Math.min(1, info.top / editorMax));
+      const previewMax = Math.max(0, previewScroll.scrollHeight - previewScroll.clientHeight);
+      if (previewMax <= 0) return;
+      lock = 'editor';
+      previewScroll.scrollTop = progress * previewMax;
+      requestAnimationFrame(function () { lock = null; });
+    }
+    function linearFromPreview() {
+      const previewMax = Math.max(1, previewScroll.scrollHeight - previewScroll.clientHeight);
+      const progress = Math.max(0, Math.min(1, previewScroll.scrollTop / previewMax));
+      const info = cm.getScrollInfo();
+      const editorMax = Math.max(0, info.height - info.clientHeight);
+      if (editorMax <= 0) return;
+      lock = 'preview';
+      cm.scrollTo(null, progress * editorMax);
+      requestAnimationFrame(function () { lock = null; });
+    }
+
     function syncFromEditor() {
       if (!scrollEnabled || !active) return;
       if (lock === 'preview') return;
-      if (!sourceMap.length) return;
+      if (!sourceMap.length) { linearFromEditor(); return; }
 
       const line = editorTopLine();
       const pair = findPair(line);
@@ -85,7 +110,7 @@
     function syncFromPreview() {
       if (!scrollEnabled || !active) return;
       if (lock === 'editor') return;
-      if (!sourceMap.length) return;
+      if (!sourceMap.length) { linearFromPreview(); return; }
 
       const scrollTop = previewScroll.scrollTop;
       let prev = sourceMap[0], next = sourceMap[sourceMap.length - 1];

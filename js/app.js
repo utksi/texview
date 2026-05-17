@@ -110,10 +110,21 @@
     // Ratio CSS variable
     applySplitRatio();
     window.MdvStorage.set('mode', mode);
-    // Refresh CodeMirror after layout change
+    /* Refresh CodeMirror after the layout change. When we come BACK to
+       a split mode from preview-only, the editor pane went from
+       display:none to visible, so CM's cached gutter/line widths are
+       stale. A single rAF + refresh fires before the browser has
+       finished applying the new layout, so the gutter is re-measured at
+       the wrong width and ends up "fat", covering text. Do the same
+       double-rAF + refresh pattern that fixed the line-number toggle:
+       measure once after the first paint, then again the frame after,
+       which is when the gutter width actually settles. */
     requestAnimationFrame(function () {
-      if (cm) cm.refresh();
-      if (sync) sync.cacheOffsets();
+      if (cm) { try { cm.refresh(); } catch (_) {} }
+      requestAnimationFrame(function () {
+        if (cm) { try { cm.refresh(); } catch (_) {} }
+        if (sync) sync.cacheOffsets();
+      });
     });
   }
 
