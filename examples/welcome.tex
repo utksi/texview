@@ -1,0 +1,164 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{hyperref}
+
+\title{Welcome to \texttt{texview}}
+\author{Browser-only LaTeX viewer}
+\date{}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}{Lemma}
+
+\begin{document}
+\maketitle
+
+A browser-only viewer for lightweight LaTeX. Aimed at math notes, problem sets
+and derivations rather than full papers --- there's no bibliography engine, no
+real float placement and no macro expansion, but math, sectioning, lists,
+theorem-like environments, links, \texttt{verbatim}, basic \texttt{tabular}
+and \texttt{\textbackslash includegraphics} all render.
+
+\section{Math}
+
+Inline math uses \texttt{\$\dots\$} or \texttt{\textbackslash(\dots\textbackslash)}:
+the area of a circle is $A = \pi r^2$ and Euler's identity is
+$e^{i\pi} + 1 = 0$.
+
+Display math uses \texttt{\$\$\dots\$\$}, \texttt{\textbackslash[\dots\textbackslash]},
+or an \texttt{amsmath} environment:
+
+\[
+  \frac{\partial}{\partial t}\Psi(\mathbf{r}, t)
+  =
+  \frac{1}{i\hbar}\,\hat{H}\,\Psi(\mathbf{r}, t)
+\]
+
+\begin{align}
+  \nabla \cdot \mathbf{E}     &= \frac{\rho}{\varepsilon_0} \\
+  \nabla \cdot \mathbf{B}     &= 0                          \\
+  \nabla \times \mathbf{E}    &= -\frac{\partial \mathbf{B}}{\partial t} \\
+  \nabla \times \mathbf{B}    &= \mu_0 \mathbf{J} + \mu_0 \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t}
+\end{align}
+
+\section{Sectioning}
+
+This is a paragraph. The \texttt{\textbackslash section} command takes
+\textbf{a numbered heading}; \texttt{\textbackslash section*} gives an
+\textit{unnumbered} one.
+
+\subsection{Subsections}
+
+Section numbers nest. References resolve too --- e.g.\ this lives in
+section \ref{sec:numbers}.
+
+\subsection{Numbers and refs}\label{sec:numbers}
+
+You can use \texttt{\textbackslash label\{\dots\}} and
+\texttt{\textbackslash ref\{\dots\}}; eqref renders the (parenthesized)
+equation number.
+
+\subsubsection{Even deeper}
+
+Down to \texttt{\textbackslash subsubsection}; paragraph and subparagraph
+also work.
+
+\section{Lists}
+
+Unordered:
+\begin{itemize}
+  \item apples
+  \item pears
+  \item citrus
+\end{itemize}
+
+Ordered:
+\begin{enumerate}
+  \item wake up
+  \item make coffee
+  \item read \texttt{.tex} files
+\end{enumerate}
+
+Description:
+\begin{description}
+  \item[\texttt{KaTeX}] fast math typesetting in the browser
+  \item[\texttt{CodeMirror}] the source editor
+  \item[\texttt{DOMPurify}] HTML sanitizer
+\end{description}
+
+\section{Theorem-like environments}
+
+\begin{theorem}[Pythagoras]
+For any right triangle with legs $a$, $b$ and hypotenuse $c$,
+\[ a^2 + b^2 = c^2. \]
+\end{theorem}
+
+\begin{lemma}
+The sum of the first $n$ positive integers is
+\(\tfrac{n(n+1)}{2}\).
+\end{lemma}
+
+\begin{proof}
+Pair the $k$-th term with the $(n+1-k)$-th; each pair sums to $n+1$, and
+there are $n/2$ pairs.
+\end{proof}
+
+\section{Code}
+
+Inline code with \verb|\verb|, like \verb|cm.setOption('lineNumbers', false)|.
+
+\begin{verbatim}
+function fibonacci(n) {
+  if (n < 2) return n;
+  let [a, b] = [0, 1];
+  for (let i = 2; i <= n; i++) [a, b] = [b, a + b];
+  return b;
+}
+\end{verbatim}
+
+\section{Tables}
+
+A simple \texttt{tabular}:
+
+\begin{center}
+\begin{tabular}{l c r}
+  \hline
+  Feature       & Library      & Notes                     \\
+  \hline
+  Math          & KaTeX        & fast, no MathJax          \\
+  Editor        & CodeMirror 5 & \texttt{stex} mode        \\
+  Sanitization  & DOMPurify    & always-on safety net      \\
+  \hline
+\end{tabular}
+\end{center}
+
+\section{Quotes and emphasis}
+
+\begin{quote}
+``Any sufficiently advanced technology is indistinguishable from magic.''
+--- Arthur C.\ Clarke
+\end{quote}
+
+You can mix \textbf{bold}, \textit{italic}, \emph{emphasized}, \texttt{monospace},
+\underline{underlined} and \sout{struck-through} text.
+
+\section{Images}
+
+Drop an image file anywhere on the page (or paste a screenshot), then insert
+the LaTeX reference from the attachments popover --- it renders inline as a
+\texttt{figure}:
+
+% \begin{figure}
+%   \centering
+%   \includegraphics[width=0.6\textwidth]{./diagram.png}
+%   \caption{Sketch of the setup}
+% \end{figure}
+
+\section{What's not supported}
+
+Bibliographies (\texttt{\textbackslash cite}, \texttt{\textbackslash bibliography}),
+custom macros (\texttt{\textbackslash newcommand} is stripped, not expanded),
+exact float placement, page-level layout, fine microtypography, and most
+package-specific commands. If you need any of those, a real LaTeX engine
+(local TeX Live, Overleaf, or a WASM build like SwiftLaTeX) is the right tool.
+
+\end{document}
